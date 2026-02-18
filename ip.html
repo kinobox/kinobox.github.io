@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IP Checker</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --border: #1e2d45;
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --success: #10b981;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 680px;
+    position: relative;
+    z-index: 1;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid rgba(0,212,255,0.3);
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    margin-bottom: 1rem;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    margin-top: 0.5rem;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .input-group {
+    display: flex;
+    gap: 0.75rem;
+    align-items: stretch;
+  }
+
+  .ip-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .ip-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,212,255,0.1);
+  }
+
+  .ip-input::placeholder { color: var(--muted); }
+
+  .btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    padding: 0.85rem 1.5rem;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,212,255,0.3); }
+  .btn:active { transform: translateY(0); }
+
+  /* Result */
+  .result {
+    display: none;
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid;
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result.found {
+    background: rgba(239,68,68,0.08);
+    border-color: rgba(239,68,68,0.35);
+  }
+
+  .result.not-found {
+    background: rgba(16,185,129,0.08);
+    border-color: rgba(16,185,129,0.35);
+  }
+
+  .result-status {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .found .result-status { color: var(--danger); }
+  .not-found .result-status { color: var(--success); }
+
+  .result-detail {
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  .match-item {
+    display: inline-block;
+    background: rgba(239,68,68,0.15);
+    border: 1px solid rgba(239,68,68,0.3);
+    color: var(--danger);
+    border-radius: 4px;
+    padding: 0.1rem 0.5rem;
+    margin: 0.15rem 0.15rem 0 0;
+    font-size: 0.75rem;
+  }
+
+  /* List */
+  .list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+
+  .list-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .list-count {
+    font-size: 0.72rem;
+    color: var(--accent);
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.2);
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+  }
+
+
+
+  .edit-area {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    width: 100%;
+    min-height: 100px;
+    resize: vertical;
+    outline: none;
+    line-height: 1.6;
+    transition: border-color 0.2s;
+  }
+
+  .edit-area:focus { border-color: var(--accent); }
+
+  .edit-hint {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 0.5rem;
+  }
+
+  .section-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  .error-msg {
+    font-size: 0.78rem;
+    color: var(--danger);
+    margin-top: 0.5rem;
+    display: none;
+  }
+
+  .my-ip-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.85rem;
+    padding: 0.55rem 0.85rem;
+    background: rgba(0,212,255,0.05);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-radius: 7px;
+    font-size: 0.78rem;
+    min-height: 36px;
+  }
+
+  .my-ip-label { color: var(--muted); white-space: nowrap; }
+
+  .my-ip-value {
+    color: var(--accent);
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 1px dashed rgba(0,212,255,0.4);
+    transition: border-color 0.15s;
+  }
+  .my-ip-value:hover { border-color: var(--accent); }
+
+  .my-ip-hint { color: var(--muted); font-size: 0.7rem; margin-left: auto; white-space: nowrap; }
+
+  .spinner {
+    width: 12px; height: 12px;
+    border: 2px solid rgba(0,212,255,0.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="container">
+
+  <!-- Input -->
+  <div class="card">
+    <div class="my-ip-bar" id="myIpBar">
+      <div class="spinner" id="ipSpinner"></div>
+      <span class="my-ip-label">Ваш IP:</span>
+      <span id="myIpValue" style="color:var(--muted);font-size:0.75rem">определяем...</span>
+      <span class="my-ip-hint" id="myIpHint"></span>
+    </div>
+    <div class="section-label">Введите IP для проверки</div>
+    <div class="input-group">
+      <input class="ip-input" id="ipInput" type="text" placeholder="192.168.1.100" maxlength="45" autocomplete="off" spellcheck="false">
+      <button class="btn" onclick="checkIP()">Проверить</button>
+    </div>
+    <div class="error-msg" id="errorMsg">Неверный формат IP адреса</div>
+  </div>
+
+  <!-- Result -->
+  <div class="result" id="result">
+    <div class="result-status" id="resultStatus"></div>
+    <div class="result-detail" id="resultDetail"></div>
+  </div>
+
+  <!-- List editor -->
+  <div class="card" style="margin-top:1rem">
+    <div class="list-header">
+      <span class="list-title">База адресов</span>
+      <span class="list-count" id="listCount">0 записей</span>
+    </div>
+    <textarea class="edit-area" id="listEditor" placeholder="Введите IP или подсети, по одному на строку:&#10;192.168.1.1&#10;10.0.0.0/8&#10;172.16.0.0/12"></textarea>
+  </div>
+
+</div>
+
+<script>
+// ─── Auto-detect my IP ──────────────────────────────────────────
+async function fetchMyIP() {
+  const spinner = document.getElementById('ipSpinner');
+  const valueEl = document.getElementById('myIpValue');
+  const hintEl  = document.getElementById('myIpHint');
+
+  // Try two free services — first wins
+  const services = [
+    'https://api64.ipify.org?format=json',
+    'https://api.my-ip.io/v2/ip.json',
+  ];
+
+  for (const url of services) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+      const data = await res.json();
+      const ip = data.ip || data.IP;
+      if (!ip) continue;
+
+      spinner.style.display = 'none';
+      valueEl.className = 'my-ip-value';
+      valueEl.textContent = ip;
+      valueEl.title = 'Нажмите, чтобы подставить в поле';
+      valueEl.onclick = () => {
+        document.getElementById('ipInput').value = ip;
+        document.getElementById('ipInput').focus();
+      };
+      hintEl.textContent = '← нажмите, чтобы подставить';
+
+      // Auto-fill input
+      document.getElementById('ipInput').value = ip;
+      return;
+    } catch (_) { /* try next */ }
+  }
+
+  // All failed
+  spinner.style.display = 'none';
+  valueEl.textContent = 'не удалось определить';
+  valueEl.style.color = 'var(--muted)';
+}
+
+fetchMyIP();
+
+// ─── Default list ───────────────────────────────────────────────
+const ipList = [
+"82.117.84.115",
+"34.96.46.127",
+"104.28.166.9",
+"104.28.219.137",
+"45.148.10.246",
+"202.46.62.0/24",
+"116.179.0.0/16",
+"43.163.64.0/18",
+"43.134.128.0/18",
+"43.128.64.0/18",
+"124.156.196.0/22",
+"112.65.211.0/24",
+"94.191.32.0/20",
+"43.163.0.0/18",
+"43.157.64.0/18",
+"43.156.0.0/18",
+"43.153.192.0/18",
+"43.134.224.0/19",
+"43.134.0.0/18",
+"150.109.20.0/22",
+"129.211.192.0/18",
+"123.207.16.0/23",
+"119.28.98.0/23",
+"43.133.32.0/19",
+"43.173.128.0/18",
+"87.245.163.74",
+"213.183.113.231",
+"109.252.206.33",
+"78.140.240.0/22",
+"46.21.244.0/22",
+"94.25.224.48",
+"77.79.173.74",
+"213.27.18.116",
+"213.222.244.30",
+"82.204.155.78",
+"176.59.65.45",
+"95.64.182.138",
+"83.220.236.97",
+"195.9.137.246",
+"195.239.20.114",
+"146.120.219.96",
+"109.188.65.219",
+"81.200.21.214",
+"81.200.30.101",
+"94.159.48.86",
+"85.172.81.50",
+"91.219.58.58",
+"62.122.245.157",
+"188.187.108.129",
+"146.120.219.68",
+"109.126.59.151",
+"109.206.141.15",
+"195.112.119.13",
+"81.177.250.154",
+"91.235.220.140",
+"78.153.149.22",
+"176.124.222.160",
+"194.169.160.189",
+"195.19.220.235",
+"46.8.64.56",
+"77.105.133.0/24",
+"185.232.169.0/24",
+"95.174.88.0/21",
+"93.90.220.237",
+"185.174.136.94",
+"89.232.168.0/22",
+"92.38.189.0/24",
+"92.38.152.0/24",
+"92.38.129.0/24",
+"89.169.128.0/18",
+"84.201.128.0/18",
+"62.84.112.0/20",
+"51.250.50.0/23",
+"51.250.0.0/17",
+"185.206.164.0/22",
+"158.160.0.0/16",
+"130.193.32.0/19",
+"178.67.192.59",
+"176.59.55.134",
+"5.188.167.239",
+"46.29.238.0/24",
+"80.82.77.0/24",
+"79.137.143.0/24",
+"79.137.138.0/24",
+"79.137.151.0/24",
+"45.90.185.0/24",
+"45.84.107.0/24",
+"45.138.16.0/24",
+"192.42.116.0/22",
+"185.220.101.0/24",
+"109.70.100.0/24",
+"80.74.25.6",
+"46.8.223.0/24",
+"46.8.16.0/24"
+];
+
+// ─── Update count ────────────────────────────────────────────────
+function updateCount() {
+  const entries = editor.value.split('\n').map(s => s.trim()).filter(Boolean);
+  document.getElementById('listCount').textContent = `${entries.length} записей`;
+}
+
+// ─── Init ──────────────────────────────────────────────────────────────
+const editor = document.getElementById('listEditor');
+editor.value = ipList.join('\n');
+editor.addEventListener('input', () => updateCount());
+updateCount();
+
+document.getElementById('ipInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkIP();
+});
+
+// ─── Helpers ─────────────────────────────────────────────────────
+function parseEntries() {
+  return editor.value
+    .split('\n')
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+function isValidIP(ip) {
+  return /^(\d{1,3}\.){3}\d{1,3}$/.test(ip) &&
+    ip.split('.').every(o => +o >= 0 && +o <= 255);
+}
+
+function ipToInt(ip) {
+  return ip.split('.').reduce((acc, o) => (acc << 8) | +o, 0) >>> 0;
+}
+
+function ipInCIDR(ip, cidr) {
+  const [net, bits] = cidr.split('/');
+  if (!isValidIP(net)) return false;
+  const mask = bits === '0' ? 0 : (~0 << (32 - +bits)) >>> 0;
+  return (ipToInt(ip) & mask) === (ipToInt(net) & mask);
+}
+
+// ─── Main check ─────────────────────────────────────────────────
+function checkIP() {
+  const ip = document.getElementById('ipInput').value.trim();
+  const errEl = document.getElementById('errorMsg');
+  const resultEl = document.getElementById('result');
+
+  if (!isValidIP(ip)) {
+    errEl.style.display = 'block';
+    resultEl.style.display = 'none';
+    return;
+  }
+  errEl.style.display = 'none';
+
+  const entries = parseEntries();
+  const exactMatches = [];
+  const subnetMatches = [];
+
+  entries.forEach(entry => {
+    if (entry.includes('/')) {
+      if (ipInCIDR(ip, entry)) subnetMatches.push(entry);
+    } else {
+      if (isValidIP(entry) && entry === ip) exactMatches.push(entry);
+    }
+  });
+
+  const found = exactMatches.length > 0 || subnetMatches.length > 0;
+
+  resultEl.className = 'result ' + (found ? 'found' : 'not-found');
+  resultEl.style.display = 'block';
+
+  // Force reflow for animation replay
+  void resultEl.offsetWidth;
+  resultEl.style.animation = 'none';
+  void resultEl.offsetWidth;
+  resultEl.style.animation = '';
+
+  const statusEl = document.getElementById('resultStatus');
+  const detailEl = document.getElementById('resultDetail');
+
+  if (found) {
+    statusEl.innerHTML = `✗ &nbsp;${ip} заблокирован`;
+    let detail = '';
+    if (exactMatches.length) {
+      detail += `Точное совпадение:<br>${exactMatches.map(m => `<span class="match-item">${m}</span>`).join('')}<br>`;
+    }
+    if (subnetMatches.length) {
+      detail += `Входит в подсети:<br>${subnetMatches.map(m => `<span class="match-item">${m}</span>`).join('')}`;
+    }
+    detailEl.innerHTML = detail;
+  } else {
+    statusEl.innerHTML = `✓ &nbsp;${ip} не заблокирован`;
+    detailEl.innerHTML = `Адрес не совпадает ни с одним из ${entries.length} записей`;
+  }
+}
+</script>
+</body>
+</html>
